@@ -29,11 +29,11 @@ export const findUserByEmail = async (email: string): Promise<IUser | null> => {
 };
 
 export const findUserById = async (id: string): Promise<IUser | null> => {
-  return await User.findById(id);
+  return await User.findById({ _id: id, active: true }).select("+accessToken");
 };
 
 export const getAllUsers = async (): Promise<any[]> => {
-  return await User.find().select("-password");
+  return await User.find({ active: true }).select("-password");
 };
 
 export const updateUserById = async (
@@ -50,8 +50,14 @@ export const updateUserById = async (
   }).select("-password");
 };
 
-export const deleteUserById = async (userId: string): Promise<any> => {
+export const deleteUserById = async (userId: string): Promise<IUser | null> => {
   return await User.findByIdAndDelete(userId);
+};
+
+export const deactivateUserById = async (
+  userId: string,
+): Promise<IUser | null> => {
+  return await User.findByIdAndUpdate(userId, { active: false }, { new: true });
 };
 
 export const getMe = async (userId: mongoose.Types.ObjectId): Promise<any> => {
@@ -87,6 +93,7 @@ const userService = {
   updateUserById,
   saveAccessToken,
   clearAccessToken,
+  deactivateUserById,
 };
 
 export default userService;

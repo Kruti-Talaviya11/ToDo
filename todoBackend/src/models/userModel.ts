@@ -8,6 +8,7 @@ export interface IUser extends Document {
   password: string;
   role: "admin" | "user";
   accessToken: string;
+  active: boolean;
   comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -41,9 +42,18 @@ const userSchema = new mongoose.Schema<IUser>(
       type: String,
       select: false,
     },
+    active: {
+      type: Boolean,
+      default: true,
+      select: false, // optional but recommended
+    },
   },
   { timestamps: true },
 );
+
+userSchema.pre(/^find/, function (this: mongoose.Query<any, any>) {
+  this.find({ active: { $ne: false } });
+});
 
 userSchema.pre("save", async function (): Promise<void> {
   if (!this.isModified("password")) return;
@@ -56,5 +66,4 @@ userSchema.methods.comparePassword = async function (
 ): Promise<boolean> {
   return bcrypt.compare(candidate, this.password);
 };
-
 export const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);

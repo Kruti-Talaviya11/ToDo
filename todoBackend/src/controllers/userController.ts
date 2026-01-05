@@ -80,7 +80,7 @@ export const deleteUser = catchAsync(
     res: Response,
     next: NextFunction,
   ): Promise<void | Response> => {
-    const user = await userService.deleteUserById(req.params.id);
+    const user = await userService.deactivateUserById(req.params.id);
 
     if (!user) {
       return next(new AppError("User not found", 404));

@@ -114,7 +114,6 @@ export const protect = catchAsync(
     if (!user) {
       return next(new AppError("User no longer exists", 401));
     }
-
     // 🔒 TOKEN MISMATCH CHECK
     if (user.accessToken !== token) {
       return next(new AppError("Session expired. Please login again.", 401));

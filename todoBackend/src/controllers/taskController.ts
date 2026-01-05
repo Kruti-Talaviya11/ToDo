@@ -80,8 +80,12 @@ export const updateTaskStatus = catchAsync(
     const task = await taskService.getTaskById(req.params.id);
 
     if (!task) return next(new AppError("Task not found", 404));
+    const assignedUserId =
+      typeof task.assignedTo === "object"
+        ? task.assignedTo._id.toString()
+        : task.assignedTo.toString();
 
-    if (task.assignedTo.toString() !== req.user!._id.toString()) {
+    if (assignedUserId !== req.user!._id.toString()) {
       return next(new AppError("You can update only your tasks", 403));
     }
 
