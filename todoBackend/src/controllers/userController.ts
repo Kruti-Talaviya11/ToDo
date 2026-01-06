@@ -49,7 +49,14 @@ export const getMe = catchAsync(
     });
   },
 );
-
+export const adminonly = catchAsync(
+  async (req: Request, res: Response): Promise<Response> => {
+    return res.status(200).json({
+      status: "success",
+      message: "only admin can assecc.",
+    });
+  },
+);
 // ADMIN: update user
 export const updateUser = catchAsync(
   async (

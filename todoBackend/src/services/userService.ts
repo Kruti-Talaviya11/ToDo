@@ -1,5 +1,6 @@
 import { User, IUser } from "../models/userModel";
 import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
 
 interface CreateUserInput {
   name: string;
@@ -50,6 +51,25 @@ export const updateUserById = async (
   }).select("-password");
 };
 
+export const updateUserPassword = async (
+  userId: string,
+  password: string,
+): Promise<any> => {
+  return await User.findByIdAndUpdate(
+    userId,
+    {
+      password,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+      accessToken: " ",
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  ).select("-password");
+};
+
 export const deleteUserById = async (userId: string): Promise<IUser | null> => {
   return await User.findByIdAndDelete(userId);
 };
@@ -60,29 +80,54 @@ export const deactivateUserById = async (
   return await User.findByIdAndUpdate(userId, { active: false }, { new: true });
 };
 
-export const getMe = async (userId: mongoose.Types.ObjectId): Promise<any> => {
+export const getMe = async (
+  userId: mongoose.Types.ObjectId,
+): Promise<IUser | null> => {
   return await User.findById(userId).select("-password");
 };
 
-export const saveAccessToken = async (
+export const saveRefreshToken = async (
   userId: string,
   token: string,
 ): Promise<IUser | null> => {
   return await User.findByIdAndUpdate(
     userId,
-    { accessToken: token },
+    {
+      refreshToken: token,
+    },
     { validateBeforeSave: false, new: true },
   );
 };
 
-export const clearAccessToken = async (userId: string): Promise<any> => {
+export const verifyRefreshToken = (token: string): { id: string } => {
+  if (!process.env.REFRESH_TOKEN_SECRET) {
+    throw new Error("REFRESH_TOKEN_SECRET not defined");
+  }
+
+  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET) as {
+    id: string;
+    type: string;
+  };
+};
+
+export const clearRefreshToken = async (
+  userId: string,
+): Promise<IUser | null> => {
   return await User.findByIdAndUpdate(
     userId,
-    { accessToken: "null" },
+    { refreshToken: "null", refreshTokenExpires: undefined },
     { validateBeforeSave: false, new: true },
   );
 };
 
+export const findUserByResetToken = async (
+  hashedToken: string,
+): Promise<IUser | null> => {
+  return await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+};
 const userService = {
   createUser,
   findUserByEmail,
@@ -91,9 +136,12 @@ const userService = {
   getMe,
   deleteUserById,
   updateUserById,
-  saveAccessToken,
-  clearAccessToken,
+  clearRefreshToken,
   deactivateUserById,
+  findUserByResetToken,
+  updateUserPassword,
+  saveRefreshToken,
+  verifyRefreshToken,
 };
 
 export default userService;

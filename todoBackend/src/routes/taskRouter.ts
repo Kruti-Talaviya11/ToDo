@@ -1,13 +1,14 @@
 import express from "express";
 import * as taskController from "../controllers/taskController";
 import { protect, restrictTo } from "../controllers/authController";
+import { USER_TYPE } from "../utils/constant";
 
 const router = express.Router();
 
 router.use(protect);
 
 // USER routes
-router.get("/my-tasks", restrictTo("user"), taskController.getMyTasks);
+router.get("/my-tasks", restrictTo(USER_TYPE.USER), taskController.getMyTasks);
 router.patch(
   "/:id/status",
   restrictTo("user"),
@@ -17,13 +18,13 @@ router.patch(
 // ADMIN routes
 router
   .route("/")
-  .post(restrictTo("admin"), taskController.createTask)
-  .get(restrictTo("admin"), taskController.getAllTasks);
+  .post(restrictTo(USER_TYPE.ADMIN), taskController.createTask)
+  .get(restrictTo(USER_TYPE.ADMIN), taskController.getAllTasks);
 
 router
   .route("/:id")
   .get(taskController.getTask)
-  .patch(restrictTo("admin"), taskController.updateTask)
-  .delete(restrictTo("admin"), taskController.deleteTask);
+  .patch(restrictTo(USER_TYPE.ADMIN), taskController.updateTask)
+  .delete(restrictTo(USER_TYPE.ADMIN), taskController.deleteTask);
 
 export default router;
