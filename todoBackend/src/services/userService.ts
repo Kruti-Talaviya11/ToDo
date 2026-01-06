@@ -1,6 +1,5 @@
 import { User, IUser } from "../models/userModel";
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
 
 interface CreateUserInput {
   name: string;
@@ -86,40 +85,6 @@ export const getMe = async (
   return await User.findById(userId).select("-password");
 };
 
-export const saveRefreshToken = async (
-  userId: string,
-  token: string,
-): Promise<IUser | null> => {
-  return await User.findByIdAndUpdate(
-    userId,
-    {
-      refreshToken: token,
-    },
-    { validateBeforeSave: false, new: true },
-  );
-};
-
-export const verifyRefreshToken = (token: string): { id: string } => {
-  if (!process.env.REFRESH_TOKEN_SECRET) {
-    throw new Error("REFRESH_TOKEN_SECRET not defined");
-  }
-
-  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET) as {
-    id: string;
-    type: string;
-  };
-};
-
-export const clearRefreshToken = async (
-  userId: string,
-): Promise<IUser | null> => {
-  return await User.findByIdAndUpdate(
-    userId,
-    { refreshToken: "null", refreshTokenExpires: undefined },
-    { validateBeforeSave: false, new: true },
-  );
-};
-
 export const findUserByResetToken = async (
   hashedToken: string,
 ): Promise<IUser | null> => {
@@ -136,12 +101,9 @@ const userService = {
   getMe,
   deleteUserById,
   updateUserById,
-  clearRefreshToken,
   deactivateUserById,
   findUserByResetToken,
   updateUserPassword,
-  saveRefreshToken,
-  verifyRefreshToken,
 };
 
 export default userService;

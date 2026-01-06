@@ -1,68 +1,12 @@
 import { Request, Response, NextFunction } from "express";
-import jwt, { SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import userService from "../services/userService";
+import tokenService from "../services/tokenService";
 import { catchAsync } from "../utils/catchAsync";
 import AppError from "../utils/appError";
 import { sendEmail } from "../utils/email";
 import type { USER_TYPE } from "../utils/constant";
-
-const signToken = (user: any): string => {
-  if (!process.env.JWT_SECRET || !process.env.JWT_EXPIRES_IN) {
-    throw new Error("JWT environment variables are not defined");
-  }
-  const options: SignOptions = {
-    expiresIn: process.env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
-  };
-
-  return jwt.sign(
-    {
-      id: user._id,
-    },
-    process.env.JWT_SECRET as string,
-    options,
-  );
-};
-
-const signRefreshToken = (user: any): string => {
-  if (
-    !process.env.REFRESH_TOKEN_SECRET ||
-    !process.env.REFRESH_TOKEN_EXPIRES_IN
-  ) {
-    throw new Error("JWT environment variables are not defined");
-  }
-  const options: SignOptions = {
-    expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN as SignOptions["expiresIn"],
-  };
-
-  return jwt.sign(
-    {
-      id: user._id,
-    },
-    process.env.REFRESH_TOKEN_SECRET as string,
-    options,
-  );
-};
-
-const sendToken = async (
-  user: any,
-  statusCode: number,
-  res: Response,
-): Promise<Response> => {
-  const accessToken = signToken(user);
-  const refreshToken = signRefreshToken(user);
-  await userService.saveRefreshToken(user._id.toString(), refreshToken);
-
-  user.password = undefined;
-  user.accessToken = undefined;
-
-  return res.status(statusCode).json({
-    status: "success",
-    accessToken,
-    refreshToken,
-    data: { user },
-  });
-};
 
 export const signup = catchAsync(
   async (req: Request, res: Response): Promise<Response> => {
@@ -75,7 +19,7 @@ export const signup = catchAsync(
       role,
     });
 
-    return sendToken(user, 201, res);
+    return await tokenService.sendToken(user, 201, res);
   },
 );
 
@@ -97,13 +41,13 @@ export const login = catchAsync(
       return next(new AppError("Invalid credentials", 401));
     }
 
-    return sendToken(user, 200, res);
+    return await tokenService.sendToken(user, 200, res);
   },
 );
 
 export const logout = catchAsync(
   async (req: Request, res: Response): Promise<Response> => {
-    await userService.clearRefreshToken(req.user!._id.toString());
+    await tokenService.clearRefreshToken(req.user!._id.toString());
 
     return res.status(200).json({
       status: "success",
@@ -215,7 +159,7 @@ export const refreshToken = catchAsync(
       return next(new AppError("Refresh token required", 401));
     }
 
-    const decoded = userService.verifyRefreshToken(refreshToken);
+    const decoded = tokenService.verifyRefreshToken(refreshToken);
 
     if (!decoded) {
       return next(new AppError("Invalid refresh token", 401));
@@ -227,11 +171,14 @@ export const refreshToken = catchAsync(
       return next(new AppError("User no longer exists", 401));
     }
 
-    const accessToken = signToken(user);
+    const accessToken = tokenService.signToken(user);
+    const newRefreshToken = tokenService.signRefreshToken(user);
+    await tokenService.saveRefreshToken(user._id.toString(), newRefreshToken);
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       accessToken,
+      newRefreshToken,
     });
   },
 );
